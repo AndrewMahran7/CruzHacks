@@ -6,9 +6,21 @@
 
 Analyzes a single screenshot and extracts structured information.
 
-### 2. POST /api/regenerate
+### 2. POST /api/summarize
+
+Creates a condensed, intelligent summary from session entities with AI-powered insights.
+
+### 3. POST /api/regenerate
 
 Regenerates session-level analysis from multiple screenshot analyses.
+
+### 4. GET /api/sessions
+
+Lists all sessions for a user.
+
+### 5. GET /api/sessions/[id]
+
+Retrieves detailed information for a specific session.
 
 ---
 
@@ -301,6 +313,172 @@ curl -X POST http://localhost:3000/api/regenerate \
 Run locally:
 ```bash
 node test-regenerate.mjs
+```
+
+### CORS
+
+Cross-origin requests are allowed (same as /api/analyze)
+
+---
+
+## POST /api/summarize
+
+Creates a condensed, intelligent summary from session entities with actionable insights and recommendations.
+
+### Purpose
+
+Takes all entities from a session and uses AI to create:
+- A condensed overview (2-4 sentences)
+- Key highlights (top 3-5 bullet points)
+- Actionable recommendations (2-3 suggestions)
+- Merged/deduplicated entities
+- An improved session title
+
+### Request
+
+#### Headers
+```
+Content-Type: application/json
+```
+
+#### Body
+```json
+{
+  "sessionId": "string",
+  "sessionName": "string",
+  "entities": [
+    {
+      "type": "string",
+      "title": "string | null",
+      "attributes": {
+        "key": "value"
+      }
+    }
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sessionId` | string | Yes | Unique session identifier |
+| `sessionName` | string | Yes | Current session/notebook name |
+| `entities` | array | Yes | All entities from the session |
+| `entities[].type` | string | Yes | Entity type |
+| `entities[].title` | string\|null | Yes | Entity title |
+| `entities[].attributes` | object | Yes | Entity metadata |
+
+### Response
+
+#### Success Response (200 OK)
+
+```json
+{
+  "condensedSummary": "string",
+  "keyHighlights": ["string", "string", "string"],
+  "recommendations": ["string", "string"],
+  "mergedEntities": [...],
+  "suggestedTitle": "string"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `condensedSummary` | string | AI-generated 2-4 sentence overview |
+| `keyHighlights` | array | 3-5 most important bullet points |
+| `recommendations` | array | 2-3 actionable suggestions |
+| `mergedEntities` | array | Deduplicated/merged entities |
+| `suggestedTitle` | string | AI-suggested session title |
+
+### Example
+
+#### Request
+```bash
+curl -X POST http://localhost:3000/api/summarize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "abc-123",
+    "sessionName": "Trip to Taiwan",
+    "entities": [
+      {
+        "type": "hotel",
+        "title": "Grand Hyatt Taipei",
+        "attributes": {
+          "price": "$250/night",
+          "rating": "4.8",
+          "location": "Xinyi District"
+        }
+      },
+      {
+        "type": "hotel",
+        "title": "W Taipei",
+        "attributes": {
+          "price": "$300/night",
+          "rating": "4.6",
+          "location": "Xinyi District"
+        }
+      },
+      {
+        "type": "restaurant",
+        "title": "Din Tai Fung",
+        "attributes": {
+          "cuisine": "Taiwanese",
+          "rating": "4.9"
+        }
+      }
+    ]
+  }'
+```
+
+#### Response
+```json
+{
+  "condensedSummary": "Planning a trip to Taipei with focus on luxury hotels in Xinyi District. The Grand Hyatt offers better value at $250/night with a higher rating than W Taipei. Din Tai Fung is a must-visit for authentic Taiwanese cuisine.",
+  "keyHighlights": [
+    "Grand Hyatt Taipei: Best value at $250/night, 4.8 rating",
+    "W Taipei: Premium option at $300/night",
+    "Din Tai Fung: Top-rated Taiwanese restaurant (4.9★)"
+  ],
+  "recommendations": [
+    "Book Grand Hyatt for best price-to-quality ratio",
+    "Make Din Tai Fung reservation in advance - very popular",
+    "Both hotels are in Xinyi District - convenient for exploring"
+  ],
+  "mergedEntities": [
+    {
+      "type": "hotel-comparison",
+      "title": "Taipei Hotels Comparison",
+      "attributes": {
+        "best_value": "Grand Hyatt ($250, 4.8★)",
+        "premium_option": "W Taipei ($300, 4.6★)",
+        "location": "Xinyi District"
+      }
+    },
+    {
+      "type": "restaurant",
+      "title": "Din Tai Fung",
+      "attributes": {
+        "cuisine": "Taiwanese",
+        "rating": "4.9",
+        "note": "Must-visit"
+      }
+    }
+  ],
+  "suggestedTitle": "Taipei Trip: Hotels & Dining"
+}
+```
+
+### Use Cases
+
+- **Smart Summaries**: Get AI-generated insights from collected research
+- **Decision Support**: Receive recommendations based on gathered data
+- **Data Consolidation**: Merge similar entities into comparisons
+- **Title Suggestions**: Get better naming for sessions
+
+### Test Script
+
+Run locally:
+```bash
+node test-summarize.mjs
 ```
 
 ### CORS

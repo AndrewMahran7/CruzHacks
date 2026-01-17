@@ -10,7 +10,7 @@ export default function Home() {
         <li><code>GET /api/sessions/[id]</code> - Get session details</li>
         <li><code>POST /api/regenerate</code> - Regenerate session analysis</li>
       </ul>
-      <p>See <a href="https://github.com/AndrewMahran7/CruzHacks/blob/main/relay-that-backend/README-API.md">README-API.md</a> for documentation.</p>
+      <p>See <a href="https://github.com/AndrewMahran7/CruzHacks/blob/main/relay-that-backend/API.md">API.md</a> for full documentation.</p>
     </div>
   );
 }
