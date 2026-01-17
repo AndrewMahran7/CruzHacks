@@ -1,0 +1,164 @@
+{
+  "hotel": {
+    "rawText": "One&Only Palmilla, Los Cabos\n5 stars\n9.8 Exceptional\n652 reviews\n$850/night\nBeachfront Resort",
+    "summary": "User is viewing a luxury beachfront hotel in Los Cabos with exceptional ratings.",
+    "category": "trip-planning",
+    "entities": [
+      {
+        "type": "hotel",
+        "title": "One&Only Palmilla",
+        "attributes": {
+          "location": "Los Cabos, Baja California",
+          "price": "$850/night",
+          "rating": "9.8 Exceptional",
+          "stars": "5",
+          "reviews": "652",
+          "amenities": "Beachfront, VIP Access"
+        }
+      }
+    ],
+    "suggestedNotebookTitle": "Los Cabos Hotels"
+  },
+  "product": {
+    "rawText": "MacBook Pro 14-inch\nM3 Pro chip\n18GB unified memory\n512GB SSD storage\n$1,999.00\nSpace Black",
+    "summary": "User is viewing a MacBook Pro 14-inch configuration with M3 Pro chip and 18GB RAM.",
+    "category": "shopping",
+    "entities": [
+      {
+        "type": "product",
+        "title": "MacBook Pro 14-inch",
+        "attributes": {
+          "price": "$1,999.00",
+          "chip": "M3 Pro",
+          "memory": "18GB unified memory",
+          "storage": "512GB SSD",
+          "color": "Space Black",
+          "brand": "Apple"
+        }
+      }
+    ],
+    "suggestedNotebookTitle": "MacBook Comparisons"
+  },
+  "job": {
+    "rawText": "Senior Software Engineer\nGoogle\nMountain View, CA\n$180,000 - $250,000\nFull-time\nOn-site",
+    "summary": "User is viewing a senior software engineering position at Google with competitive compensation.",
+    "category": "job-search",
+    "entities": [
+      {
+        "type": "job",
+        "title": "Senior Software Engineer",
+        "attributes": {
+          "company": "Google",
+          "location": "Mountain View, CA",
+          "salary": "$180,000 - $250,000",
+          "employment_type": "Full-time",
+          "work_mode": "On-site"
+        }
+      }
+    ],
+    "suggestedNotebookTitle": "FAANG Job Search"
+  },
+  "flight": {
+    "rawText": "United Airlines UA 1234\nSan Francisco (SFO) → Tokyo (NRT)\nDeparture: Jan 15, 2026 10:30 AM\nArrival: Jan 16, 2026 2:45 PM\n$1,250 Economy",
+    "summary": "User is viewing a direct flight from San Francisco to Tokyo on United Airlines.",
+    "category": "trip-planning",
+    "entities": [
+      {
+        "type": "flight",
+        "title": "UA 1234 SFO → NRT",
+        "attributes": {
+          "airline": "United Airlines",
+          "flight_number": "UA 1234",
+          "origin": "San Francisco (SFO)",
+          "destination": "Tokyo (NRT)",
+          "departure": "Jan 15, 2026 10:30 AM",
+          "arrival": "Jan 16, 2026 2:45 PM",
+          "price": "$1,250",
+          "class": "Economy"
+        }
+      }
+    ],
+    "suggestedNotebookTitle": "Japan Trip Flights"
+  },
+  "article": {
+    "rawText": "Building Scalable APIs with Next.js 14\nBy Jane Smith • Published Dec 15, 2025\nMedium • 12 min read",
+    "summary": "User is reading an article about building APIs with Next.js 14 on Medium.",
+    "category": "research",
+    "entities": [
+      {
+        "type": "article",
+        "title": "Building Scalable APIs with Next.js 14",
+        "attributes": {
+          "author": "Jane Smith",
+          "date": "Dec 15, 2025",
+          "source": "Medium",
+          "read_time": "12 min",
+          "topic": "Next.js API Development"
+        }
+      }
+    ],
+    "suggestedNotebookTitle": "Next.js API Research"
+  },
+  "restaurant": {
+    "rawText": "Nobu Tokyo\n★★★★★ 4.8 (1,240 reviews)\nJapanese, Sushi\n$$$$ • Minato City\nReservation available",
+    "summary": "User is viewing Nobu Tokyo, a highly-rated Japanese restaurant with reservation availability.",
+    "category": "trip-planning",
+    "entities": [
+      {
+        "type": "restaurant",
+        "title": "Nobu Tokyo",
+        "attributes": {
+          "rating": "4.8",
+          "reviews": "1,240",
+          "cuisine": "Japanese, Sushi",
+          "price_level": "$$$$",
+          "location": "Minato City",
+          "availability": "Reservation available"
+        }
+      }
+    ],
+    "suggestedNotebookTitle": "Tokyo Dining"
+  },
+  "course": {
+    "rawText": "Machine Learning Specialization\nStanford University • Andrew Ng\nCoursera • 3 months • Beginner to Advanced\n$49/month",
+    "summary": "User is viewing a machine learning course from Stanford University on Coursera.",
+    "category": "research",
+    "entities": [
+      {
+        "type": "course",
+        "title": "Machine Learning Specialization",
+        "attributes": {
+          "instructor": "Andrew Ng",
+          "institution": "Stanford University",
+          "platform": "Coursera",
+          "duration": "3 months",
+          "level": "Beginner to Advanced",
+          "price": "$49/month"
+        }
+      }
+    ],
+    "suggestedNotebookTitle": "AI/ML Learning Path"
+  },
+  "rental": {
+    "rawText": "Cozy Apartment in Shibuya\n2 bedrooms • 1 bath • 750 sq ft\n$180/night\nAirbnb Superhost • 4.95 ★ (127 reviews)",
+    "summary": "User is viewing a highly-rated apartment rental in Shibuya, Tokyo on Airbnb.",
+    "category": "trip-planning",
+    "entities": [
+      {
+        "type": "rental",
+        "title": "Cozy Apartment in Shibuya",
+        "attributes": {
+          "bedrooms": "2",
+          "bathrooms": "1",
+          "size": "750 sq ft",
+          "price": "$180/night",
+          "rating": "4.95",
+          "reviews": "127",
+          "host_status": "Superhost",
+          "location": "Shibuya, Tokyo"
+        }
+      }
+    ],
+    "suggestedNotebookTitle": "Tokyo Accommodations"
+  }
+}

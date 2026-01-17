@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Analyze API Response Format",
+  "description": "Response format for POST /api/analyze endpoint",
+  "type": "object",
+  "required": ["rawText", "summary", "category", "entities", "suggestedNotebookTitle"],
+  "properties": {
+    "rawText": {
+      "type": "string",
+      "description": "Full OCR text extracted from the screenshot. Contains all readable text with newlines preserved."
+    },
+    "summary": {
+      "type": "string",
+      "description": "1-3 sentence description of what the screenshot shows and what the user is doing or deciding."
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "trip-planning",
+        "shopping",
+        "job-search",
+        "research",
+        "content-writing",
+        "productivity",
+        "other"
+      ],
+      "description": "High-level category that best describes the screenshot context."
+    },
+    "entities": {
+      "type": "array",
+      "description": "List of important items/objects extracted from the screenshot (hotels, products, jobs, etc.)",
+      "items": {
+        "type": "object",
+        "required": ["type", "title", "attributes"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Entity type. Common types: hotel, product, job, flight, restaurant, article, course, rental, generic. Can be any descriptive string."
+          },
+          "title": {
+            "type": ["string", "null"],
+            "description": "Main name or title of the entity. Null if no clear title can be extracted."
+          },
+          "attributes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Flexible key-value map of entity metadata. Keys depend on entity type. Examples: price, rating, location, date, company, salary, etc."
+          }
+        }
+      }
+    },
+    "suggestedNotebookTitle": {
+      "type": ["string", "null"],
+      "description": "Suggested title for a notebook containing this screenshot. Based on the context (e.g., 'Tokyo Trip Hotels', 'MacBook Comparisons'). Null if unclear."
+    }
+  },
+  "example": {
+    "rawText": "One&Only Palmilla, Los Cabos\n5 stars\n9.8 Exceptional\n652 reviews\n$850/night\nBeachfront Resort",
+    "summary": "User is viewing a luxury beachfront hotel in Los Cabos with exceptional ratings and premium pricing.",
+    "category": "trip-planning",
+    "entities": [
+      {
+        "type": "hotel",
+        "title": "One&Only Palmilla",
+        "attributes": {
+          "location": "Los Cabos, Baja California",
+          "price": "$850/night",
+          "rating": "9.8 Exceptional",
+          "stars": "5",
+          "reviews": "652",
+          "amenities": "Beachfront, VIP Access"
+        }
+      }
+    ],
+    "suggestedNotebookTitle": "Los Cabos Hotels"
+  },
+  "notes": {
+    "error_handling": "The API always returns a valid response object. On error or missing API key, returns fallback with empty/null values.",
+    "fallback_response": {
+      "rawText": "",
+      "summary": "",
+      "category": "other",
+      "entities": [],
+      "suggestedNotebookTitle": null
+    },
+    "entity_attributes": {
+      "hotel": ["price", "rating", "location", "stars", "reviews", "amenities", "url"],
+      "product": ["price", "brand", "model", "specs", "color", "availability", "url"],
+      "job": ["company", "salary", "location", "employment_type", "work_mode", "requirements"],
+      "flight": ["airline", "flight_number", "origin", "destination", "departure", "arrival", "price", "class"],
+      "restaurant": ["cuisine", "rating", "reviews", "price_level", "location", "hours"],
+      "article": ["author", "date", "source", "read_time", "topic", "url"],
+      "course": ["instructor", "institution", "platform", "duration", "level", "price"],
+      "rental": ["bedrooms", "bathrooms", "size", "price", "rating", "reviews", "location"]
+    }
+  }
+}
