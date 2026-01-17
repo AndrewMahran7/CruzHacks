@@ -1,11 +1,17 @@
 # Screenshot Analysis API
 
-Stateless Next.js API endpoint for analyzing screenshots with Google Gemini.
+Next.js API endpoints for analyzing screenshots and summarizing sessions with Google Gemini.
 
-## Endpoint
+## Endpoints
 
+### 1. Analyze Screenshot
 ```
 POST /api/analyze
+```
+
+### 2. Summarize Session
+```
+POST /api/summarize
 ```
 
 ## Request
@@ -141,4 +147,140 @@ curl -X POST http://localhost:3000/api/analyze \
 curl -X POST https://your-app.vercel.app/api/analyze \
   -H "Content-Type: application/json" \
   -d '{"image":"data:image/png;base64,iVBORw0KG..."}'
+```
+
+---
+
+## API: Summarize Session
+
+### Endpoint
+```
+POST /api/summarize
+```
+
+### Purpose
+Takes all entities from a session and uses AI to create a condensed, intelligent summary with actionable insights.
+
+### Request Format
+
+```typescript
+{
+  sessionId: string;
+  sessionName: string;
+  entities: Array<{
+    type: string;
+    title: string | null;
+    attributes: Record<string, string>;
+  }>;
+}
+```
+
+### Response Format
+
+```typescript
+{
+  condensedSummary: string;      // AI-generated overview (2-4 sentences)
+  keyHighlights: string[];       // Top 3-5 bullet points
+  recommendations: string[];     // 2-3 AI suggestions based on content
+  mergedEntities: Array<{        // Deduplicated/merged entities
+    type: string;
+    title: string | null;
+    attributes: Record<string, string>;
+  }>;
+  suggestedTitle: string;        // AI-suggested session title
+}
+```
+
+### Example Request
+
+```json
+{
+  "sessionId": "abc-123",
+  "sessionName": "Trip to Taiwan",
+  "entities": [
+    {
+      "type": "hotel",
+      "title": "Grand Hyatt Taipei",
+      "attributes": {
+        "price": "$250/night",
+        "rating": "4.8",
+        "location": "Xinyi District"
+      }
+    },
+    {
+      "type": "hotel", 
+      "title": "W Taipei",
+      "attributes": {
+        "price": "$300/night",
+        "rating": "4.6",
+        "location": "Xinyi District"
+      }
+    },
+    {
+      "type": "restaurant",
+      "title": "Din Tai Fung",
+      "attributes": {
+        "cuisine": "Taiwanese",
+        "rating": "4.9"
+      }
+    }
+  ]
+}
+```
+
+### Example Response
+
+```json
+{
+  "condensedSummary": "Planning a trip to Taipei with focus on luxury hotels in Xinyi District. The Grand Hyatt offers better value at $250/night with a higher rating than W Taipei. Din Tai Fung is a must-visit for authentic Taiwanese cuisine.",
+  "keyHighlights": [
+    "Grand Hyatt Taipei: Best value at $250/night, 4.8 rating",
+    "W Taipei: Premium option at $300/night",
+    "Din Tai Fung: Top-rated Taiwanese restaurant (4.9★)"
+  ],
+  "recommendations": [
+    "Book Grand Hyatt for best price-to-quality ratio",
+    "Make Din Tai Fung reservation in advance - very popular",
+    "Both hotels are in Xinyi District - convenient for exploring"
+  ],
+  "mergedEntities": [
+    {
+      "type": "hotel-comparison",
+      "title": "Taipei Hotels Comparison",
+      "attributes": {
+        "best_value": "Grand Hyatt ($250, 4.8★)",
+        "premium_option": "W Taipei ($300, 4.6★)",
+        "location": "Xinyi District"
+      }
+    },
+    {
+      "type": "restaurant",
+      "title": "Din Tai Fung",
+      "attributes": {
+        "cuisine": "Taiwanese",
+        "rating": "4.9",
+        "note": "Must-visit"
+      }
+    }
+  ],
+  "suggestedTitle": "Taipei Trip: Hotels & Dining"
+}
+```
+
+### Testing
+
+```bash
+node test-summarize.mjs
+```
+
+### cURL Test
+
+```bash
+curl -X POST http://localhost:3000/api/summarize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "test-123",
+    "sessionName": "Trip Planning",
+    "entities": [{"type":"hotel","title":"Grand Hyatt","attributes":{"price":"$250"}}]
+  }'
 ```
