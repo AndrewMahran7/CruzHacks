@@ -221,7 +221,14 @@ export async function POST(request: NextRequest) {
       console.log('ERROR: Missing image field');
       return NextResponse.json(
         { error: 'Missing required field: image' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+          }
+        }
       );
     }
 
@@ -229,9 +236,34 @@ export async function POST(request: NextRequest) {
     const result = await analyzeScreenshot(body.image);
     console.log('Result:', JSON.stringify(result, null, 2));
 
-    return NextResponse.json(result, { status: 200 });
+    return NextResponse.json(result, { 
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      }
+    });
   } catch (error) {
     console.error('Request handling error:', error);
-    return NextResponse.json(FALLBACK_RESPONSE, { status: 200 });
+    return NextResponse.json(FALLBACK_RESPONSE, { 
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      }
+    });
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }
