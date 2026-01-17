@@ -31,6 +31,7 @@ interface RegenerateRequest {
   sessionId: string;
   previousSession?: PreviousSession;
   screens: ScreenInput[];
+  userQuery?: string;  // User's question or instruction
 }
 
 type Suggestion =
@@ -155,6 +156,21 @@ OUTPUT FORMAT (JSON ONLY):
 }
 
 `;
+
+    // Add user query if provided
+    if (reqBody.userQuery) {
+      prompt += `\n--- USER QUERY ---
+The user is asking: "${reqBody.userQuery}"
+
+Please address their question in your response. The sessionSummary should directly answer their question based on the collected data.
+
+For example:
+- If they ask "Which hotel is cheapest?", analyze prices and recommend the cheapest option.
+- If they ask "Summarize my job search", provide an overview of the jobs they've looked at.
+- If they ask "Compare these products", create a comparison based on attributes.
+
+`;
+    }
 
     // Add previous session context if provided
     if (reqBody.previousSession) {
