@@ -189,7 +189,7 @@ NOW ANALYZE THE SCREENSHOT:`;
           : []
       }
     };
-app/api/analyze/route.ts
+
     console.log('Analysis complete with userIntent:', result.userIntent);
 
     return result;

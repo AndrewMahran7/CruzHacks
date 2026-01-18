@@ -1,0 +1,35 @@
+{
+  "rawText": "Expedia Shop travel Open app Trips Sign in Where to? Los Cabos, Baja California ... Dates Sat, Jan 31 - Sun, Feb 1 Travelers 2 travelers, 1 room Search ← See all properties Share Save 186+ Overview About Rooms Accessibility Policies VIP Access One&Only Palmilla, Los Cabos ★★★★★ 9.8 Exceptional See all 652 reviews > Highlights for your 1-night trip Top rated beach location Discover paradise at this top rated beach location.",
+  "summary": "This screenshot displays the detailed page for the One&Only Palmilla hotel in Los Cabos on Expedia. It shows booking parameters, hotel ratings, reviews, and key highlights like its top-rated beach location.",
+  "userIntent": "Researching the One&Only Palmilla hotel in Los Cabos, Baja California, for a potential 1-night trip, evaluating its features, reviews, and suitability.",
+  "category": "trip-planning",
+  "entities": [
+    {
+      "type": "hotel",
+      "title": "One&Only Palmilla",
+      "attributes": {
+        "location": "Los Cabos, Baja California",
+        "check_in_date": "Jan 31",
+        "check_out_date": "Feb 1",
+        "travelers": 2,
+        "rooms": 1,
+        "rating_score": 9.8,
+        "rating_description": "Exceptional",
+        "number_of_reviews": 652,
+        "vip_access": true,
+        "highlight": "Top rated beach location"
+      }
+    }
+  ],
+  "suggestedNotebookTitle": "Los Cabos Hotel Research",
+  "contextClues": {
+    "isComparison": false,
+    "decisionPoint": null,
+    "relatedTopics": [
+      "Los Cabos luxury hotels",
+      "beach resorts",
+      "Expedia bookings",
+      "travel planning"
+    ]
+  }
+}
