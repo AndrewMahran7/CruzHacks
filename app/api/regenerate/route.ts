@@ -14,12 +14,19 @@ interface AnalyzeResponse {
   category: string;
   entities: Entity[];
   suggestedNotebookTitle: string | null;
+  userIntent?: string;  // NEW: Why user took this screenshot
+  contextClues?: {      // NEW: Helps connect screenshots
+    isComparison: boolean;
+    decisionPoint: string | null;
+    relatedTopics: string[];
+  };
 }
 
 interface PreviousSession {
   sessionSummary: string;
   sessionCategory: string;
   entities: Entity[];
+  formattedNotes?: string;  // NEW: Previous markdown notes
 }
 
 interface ScreenInput {
@@ -31,7 +38,7 @@ interface RegenerateRequest {
   sessionId: string;
   previousSession?: PreviousSession;
   screens: ScreenInput[];
-  userQuery?: string;  // User's question or instruction
+  userQuery?: string;
 }
 
 type Suggestion =
@@ -56,7 +63,9 @@ interface RegenerateResponse {
   sessionId: string;
   sessionSummary: string;
   sessionCategory: string;
-  entities: Entity[];
+  formattedNotes: string;  // NEW: Markdown-formatted notes
+  noteStyle: string;        // NEW: Type of notes generated
+  entities: Entity[];       // Keep for search/filtering
   suggestedNotebookTitle: string | null;
   suggestions: Suggestion[];
 }
@@ -70,6 +79,8 @@ async function analyzeSession(reqBody: RegenerateRequest): Promise<RegenerateRes
       sessionId: reqBody.sessionId,
       sessionSummary: '',
       sessionCategory: 'other',
+      formattedNotes: '',
+      noteStyle: 'general',
       entities: [],
       suggestedNotebookTitle: null,
       suggestions: [],
@@ -79,128 +90,298 @@ async function analyzeSession(reqBody: RegenerateRequest): Promise<RegenerateRes
   console.log('API key present, calling Gemini for session analysis...');
 
   try {
-    // Build prompt with previous session context and all current screens
-    let prompt = `You are an intelligent session analyzer for a notebook app. A user has a notebook/session containing multiple screenshots.
+    // NEW PROMPT - Context-aware note generation
+    let prompt = `You are an AI note-taking assistant. A user has taken multiple screenshots while researching something.
 
-YOUR TASK:
-Analyze the entire session and produce:
-1. sessionSummary: 1-3 sentence description of what this notebook/session is about
-2. sessionCategory: ONE category that best describes the session
-3. entities: merged/deduplicated list of important entities across all screenshots
-4. suggestedNotebookTitle: a helpful title for the notebook
-5. suggestions: intelligent suggestions to help the user
+YOUR JOB: Synthesize these screenshots into USEFUL, ACTIONABLE notes.
 
-IMPORTANT RULES:
-- If previousSession is provided, USE IT AS CONTEXT to maintain continuity
-- DO NOT restart the idea or drift away from previous context
-- You can refine or expand the summary, but keep the core idea consistent
-- Merge entities intelligently (deduplicate similar items)
-- Choose the most relevant category for the OVERALL session
-- Provide at least one suggestion if possible
-- Return ONLY valid JSON, no markdown, no explanations
+--- SCREENSHOT ANALYSIS ---
+`;
 
-CATEGORIES (choose one):
-- trip-planning
-- shopping
-- job-search
-- research
-- content-writing
-- productivity
-- other
+    // Add each screenshot's analysis
+    reqBody.screens.forEach((screen, i) => {
+      const analysis = screen.analysis;
+      prompt += `
+Screenshot ${i + 1} (ID: ${screen.id}):
+- Summary: ${analysis.summary}
+- User Intent: ${analysis.userIntent || 'Not specified'}
+- Category: ${analysis.category}
+- Entities: ${JSON.stringify(analysis.entities)}
+- Context Clues: ${JSON.stringify(analysis.contextClues || {})}
+- Raw Text Preview: ${analysis.rawText.substring(0, 150)}...
+`;
+    });
 
-SUGGESTION TYPES:
-1. "question" - Ask a clarifying question about what the user is optimizing for
-   Example: "Are you prioritizing price or location for this trip?"
-   
-2. "ranking" - Propose a ranking of entities by some basis (price, rating, value, etc.)
-   Only use if session has multiple comparable entities (hotels, products, jobs)
-   Example: Rank 3 hotels by "value" with reasons for each
-   
-3. "next-step" - Suggest a concrete action
-   Example: "Consider filtering to hotels with free cancellation"
+    // Add previous session context if it exists
+    if (reqBody.previousSession) {
+      prompt += `\n--- PREVIOUS SESSION CONTEXT ---
+Summary: ${reqBody.previousSession.sessionSummary}
+Category: ${reqBody.previousSession.sessionCategory}
+${reqBody.previousSession.formattedNotes ? `Previous Notes:\n${reqBody.previousSession.formattedNotes.substring(0, 500)}...` : ''}
+`;
+    } else {
+      prompt += `\n--- FIRST SCREENSHOTS IN THIS SESSION ---\n`;
+    }
 
-OUTPUT FORMAT (JSON ONLY):
+    // Add user query if present
+    if (reqBody.userQuery) {
+      prompt += `\n--- USER QUESTION ---
+"${reqBody.userQuery}"
+
+Address this question directly in your notes.
+`;
+    }
+
+    // Main instruction prompt
+    prompt += `
+--- YOUR TASK ---
+
+1. Determine the SESSION TYPE based on what the user is doing:
+   - "trip-planning" → Travel research/booking
+   - "content-creation" → Making TikTok/blog/video content
+   - "shopping" → Product comparison/purchase decision
+   - "job-search" → Career research/applications
+   - "learning" → Educational research
+   - "project-planning" → Work/personal project
+   - "general" → Mixed/unclear purpose
+
+2. Generate CONTEXTUAL MARKDOWN NOTES based on session type:
+
+FOR TRIP-PLANNING:
+\`\`\`markdown
+# [Destination] Trip Planning
+
+## Accommodation Options
+### [City 1]
+- **[Hotel Name]** - $X/night
+  - ✅ Pros: [specific benefits]
+  - ⚠️ Cons: [specific drawbacks]
+  - Best for: [use case]
+
+## Decision Framework
+- Prioritize [factor] → Choose [option] because [reason]
+- Prioritize [factor] → Choose [option] because [reason]
+
+## Next Steps
+- [ ] [Specific action item]
+- [ ] [Specific action item]
+\`\`\`
+
+FOR CONTENT-CREATION (TikTok/Video/Blog):
+\`\`\`markdown
+# [Content Topic]
+
+## Content Outline
+1. **Hook (0-5s)**: [Attention-grabbing opener]
+2. **Main Point 1 (5-20s)**: [Key message]
+3. **Main Point 2 (20-35s)**: [Supporting point]
+4. **Call to Action (35-60s)**: [What viewer should do]
+
+## Key Talking Points
+- [Stat/fact from source with citation]
+- [Quote/insight from source]
+- [Example from source]
+
+## Script Notes
+[How to present this information naturally]
+
+## Visual Ideas
+- B-roll: [specific footage needed]
+- Graphics: [text overlays, animations]
+- Transitions: [between sections]
+
+## Sources
+1. [Source name] - [Key takeaway]
+2. [Source name] - [Key takeaway]
+
+## Production Checklist
+- [ ] Write full script
+- [ ] Record B-roll
+- [ ] Create graphics
+\`\`\`
+
+FOR ACADEMIC-RESEARCH / STUDY-GUIDES:
+\`\`\`markdown
+# [Topic/Course] Study Notes
+
+## Key Concepts
+### [Concept 1]: [Name]
+**Definition**: [Clear explanation]
+
+**Why it matters**: [Practical relevance]
+
+**Key details**:
+- [Important point 1]
+- [Important point 2]
+
+**Related to**: [Other concepts from session]
+
+### [Concept 2]: [Name]
+...
+
+## Summary & Connections
+[How all these concepts fit together - the "big picture"]
+
+## Study Checklist
+- [ ] Understand [core concept]
+- [ ] Review [practice problems/examples]
+- [ ] Memorize [key definitions/formulas]
+
+## Quick Reference
+| Term | Definition | Example |
+|------|------------|---------|
+| [X]  | [Def]      | [Ex]    |
+
+## Sources
+1. [Textbook/Article] - [Chapter/Pages]
+2. [Lecture Notes] - [Date]
+\`\`\`
+
+FOR SHOPPING:
+\`\`\`markdown
+# [Product Category] Comparison
+
+## Quick Comparison
+| Product | Price | Key Specs | Best For |
+|---------|-------|-----------|----------|
+| [Name]  | $X    | [specs]   | [use case] |
+
+## Detailed Analysis
+### [Product 1]
+**Price**: $X
+**Pros**: 
+- [Specific benefit]
+- [Specific benefit]
+
+**Cons**:
+- [Specific drawback]
+
+**Verdict**: [Recommendation with reasoning]
+
+## Decision Guide
+- **Best value**: [Product] - [Why]
+- **Best performance**: [Product] - [Why]
+- **Best for [use case]**: [Product] - [Why]
+
+## Next Steps
+- [ ] [Specific action]
+\`\`\`
+
+FOR JOB-SEARCH:
+\`\`\`markdown
+# [Role Type] Job Search
+
+## Positions Tracked
+
+### [Company] - [Role]
+**Compensation**: $X-Y
+**Location**: [City/Remote]
+**Key Requirements**:
+- [Specific requirement]
+- [Specific requirement]
+
+**Why Interesting**: [Specific reason]
+**Status**: [Not applied/Applied/Interviewing]
+
+## Comparison
+| Company | Comp | Location | Culture Fit | Priority |
+|---------|------|----------|-------------|----------|
+| [X]     | $Y   | [Loc]    | [Notes]     | High     |
+
+## Application Strategy
+1. [Highest priority position] - [Why] - [Deadline]
+2. [Medium priority] - [Action needed]
+3. [Backup option] - [When to apply]
+
+## Prep Notes
+- [ ] Tailor resume for [specific role]
+- [ ] Research [company] culture
+- [ ] Practice [technical topic]
+\`\`\`
+
+FOR LEARNING/RESEARCH:
+\`\`\`markdown
+# [Topic] Research Notes
+
+## Main Concepts
+
+### [Concept 1]
+[Explanation synthesized from sources]
+
+Key points:
+- [Specific insight]
+- [Specific insight]
+
+### [Concept 2]
+[Explanation]
+
+## How It Connects
+[Explain relationships between concepts across screenshots]
+
+## Key Insights
+- [Major takeaway 1]
+- [Major takeaway 2]
+
+## Questions to Explore Next
+- [Unanswered question]
+- [Related topic to investigate]
+
+## Sources
+1. [Source] - [Main contribution to understanding]
+\`\`\`
+
+3. RULES FOR EXCELLENT NOTES:
+   - Write like a human taking notes, NOT a database
+   - Use natural, conversational language
+   - Reference screenshots naturally ("compared to the earlier option...")
+   - Focus on DECISIONS and ACTIONS, not just data listing
+   - Use formatting (headers, bullets, tables) that makes information scannable
+   - Anticipate what the user needs to know next
+   - Connect ideas and information across different screenshots
+   - Be specific and actionable - avoid vague statements
+   - Include concrete next steps
+
+4. CONTINUITY RULES:
+   - If previousSession exists, maintain continuity
+   - Expand on previous notes, don't restart from scratch
+   - Reference previous context naturally
+   - Keep the core idea/theme consistent
+
+5. USER QUERY HANDLING:
+   - If userQuery exists, address it prominently in the notes
+   - Make the answer to their question easy to find
+   - Use their question to structure the notes
+
+RETURN THIS JSON (and ONLY this JSON, no markdown wrapping):
 {
-  "sessionSummary": "1-3 sentence description of the entire notebook/session",
-  "sessionCategory": "trip-planning" | "shopping" | "job-search" | "research" | "content-writing" | "productivity" | "other",
+  "sessionSummary": "1-2 sentence high-level description",
+  "sessionCategory": "trip-planning|shopping|job-search|research|content-writing|productivity|other",
+  "formattedNotes": "FULL MARKDOWN STRING with contextual, useful notes following the templates above",
+  "noteStyle": "trip-planning|content-creation|shopping|job-search|learning|project-planning|general",
   "entities": [
     {
-      "type": "hotel" | "product" | "job" | etc,
+      "type": "entity type",
       "title": "entity name or null",
-      "attributes": {
-        "key": "value"
-      }
+      "attributes": { "key": "value" }
     }
   ],
   "suggestedNotebookTitle": "descriptive title or null",
   "suggestions": [
     {
-      "type": "question",
-      "text": "clarifying question"
-    },
-    {
-      "type": "ranking",
-      "basis": "price" | "rating" | "value" | etc,
-      "items": [
-        {
-          "entityTitle": "entity name",
-          "reason": "why ranked here"
-        }
-      ]
-    },
-    {
-      "type": "next-step",
-      "text": "concrete action suggestion"
+      "type": "question|ranking|next-step",
+      "text": "suggestion text"
     }
   ]
 }
 
-`;
+CRITICAL REQUIREMENTS:
+1. formattedNotes MUST be complete, useful markdown that helps the user accomplish their goal
+2. Notes should be structured according to the appropriate template above
+3. Write naturally - like a smart colleague taking notes for you
+4. NO generic statements - be specific and reference actual screenshot content
+5. Focus on what the user needs to DECIDE or DO next
 
-    // Add user query if provided
-    if (reqBody.userQuery) {
-      prompt += `\n--- USER QUERY ---
-The user is asking: "${reqBody.userQuery}"
-
-Please address their question in your response. The sessionSummary should directly answer their question based on the collected data.
-
-For example:
-- If they ask "Which hotel is cheapest?", analyze prices and recommend the cheapest option.
-- If they ask "Summarize my job search", provide an overview of the jobs they've looked at.
-- If they ask "Compare these products", create a comparison based on attributes.
-
-`;
-    }
-
-    // Add previous session context if provided
-    if (reqBody.previousSession) {
-      prompt += `\n--- PREVIOUS SESSION STATE (MAINTAIN CONTINUITY) ---
-Session Summary: ${reqBody.previousSession.sessionSummary}
-Session Category: ${reqBody.previousSession.sessionCategory}
-Previous Entities Count: ${reqBody.previousSession.entities.length}
-Previous Entities: ${JSON.stringify(reqBody.previousSession.entities, null, 2)}
-
-`;
-    }
-
-    // Add all current screens
-    prompt += `\n--- CURRENT SCREENS IN SESSION (${reqBody.screens.length} total) ---\n`;
-    
-    reqBody.screens.forEach((screen, index) => {
-      const analysis = screen.analysis;
-      prompt += `
-Screen ${index + 1} (ID: ${screen.id}):
-  Summary: ${analysis.summary}
-  Category: ${analysis.category}
-  Suggested Title: ${analysis.suggestedNotebookTitle || 'none'}
-  Entities Count: ${analysis.entities.length}
-  Entities: ${JSON.stringify(analysis.entities, null, 2)}
-  Raw Text (truncated): ${analysis.rawText.substring(0, 200)}${analysis.rawText.length > 200 ? '...' : ''}
-
-`;
-    });
-
-    prompt += `\nNOW ANALYZE THE ENTIRE SESSION AND RETURN ONLY THE JSON RESPONSE.`;
+NOW GENERATE THE SESSION ANALYSIS:`;
 
     const requestBody = {
       contents: [
@@ -212,7 +393,7 @@ Screen ${index + 1} (ID: ${screen.id}):
         },
       ],
       generationConfig: {
-        temperature: 0.3,
+        temperature: 0.4,  // Slightly higher for more natural writing
         responseMimeType: 'application/json',
       },
     };
@@ -238,6 +419,8 @@ Screen ${index + 1} (ID: ${screen.id}):
         sessionId: reqBody.sessionId,
         sessionSummary: '',
         sessionCategory: 'other',
+        formattedNotes: '',
+        noteStyle: 'general',
         entities: [],
         suggestedNotebookTitle: null,
         suggestions: [],
@@ -253,6 +436,8 @@ Screen ${index + 1} (ID: ${screen.id}):
         sessionId: reqBody.sessionId,
         sessionSummary: '',
         sessionCategory: 'other',
+        formattedNotes: '',
+        noteStyle: 'general',
         entities: [],
         suggestedNotebookTitle: null,
         suggestions: [],
@@ -264,10 +449,13 @@ Screen ${index + 1} (ID: ${screen.id}):
       parsed = JSON.parse(textContent);
     } catch (e) {
       console.error('Failed to parse Gemini response as JSON:', e);
+      console.error('Raw response:', textContent);
       return {
         sessionId: reqBody.sessionId,
         sessionSummary: '',
         sessionCategory: 'other',
+        formattedNotes: '',
+        noteStyle: 'general',
         entities: [],
         suggestedNotebookTitle: null,
         suggestions: [],
@@ -308,17 +496,22 @@ Screen ${index + 1} (ID: ${screen.id}):
       }
     }
 
-    // Validate and normalize response
+    // Validate and normalize response with NEW FIELDS
     const result: RegenerateResponse = {
       sessionId: reqBody.sessionId,
       sessionSummary: parsed.sessionSummary || '',
       sessionCategory: parsed.sessionCategory || 'other',
+      formattedNotes: parsed.formattedNotes || '',  // NEW
+      noteStyle: parsed.noteStyle || 'general',      // NEW
       entities: Array.isArray(parsed.entities) ? parsed.entities : [],
       suggestedNotebookTitle: parsed.suggestedNotebookTitle || null,
       suggestions: validatedSuggestions,
     };
 
-    console.log('Session analysis complete:', result);
+    console.log('Session analysis complete');
+    console.log('Note style:', result.noteStyle);
+    console.log('Formatted notes length:', result.formattedNotes.length);
+    
     return result;
   } catch (error) {
     console.error('Error in analyzeSession:', error);
@@ -326,6 +519,8 @@ Screen ${index + 1} (ID: ${screen.id}):
       sessionId: reqBody.sessionId,
       sessionSummary: '',
       sessionCategory: 'other',
+      formattedNotes: '',
+      noteStyle: 'general',
       entities: [],
       suggestedNotebookTitle: null,
       suggestions: [],
@@ -371,7 +566,13 @@ export async function POST(request: NextRequest) {
 
     console.log('Calling analyzeSession...');
     const result = await analyzeSession(body);
-    console.log('Session analysis result:', JSON.stringify(result, null, 2));
+    console.log('Session analysis result summary:', {
+      sessionId: result.sessionId,
+      noteStyle: result.noteStyle,
+      notesLength: result.formattedNotes.length,
+      entityCount: result.entities.length,
+      suggestionCount: result.suggestions.length
+    });
 
     return NextResponse.json(result, { 
       status: 200,
@@ -383,12 +584,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Request handling error:', error);
-    // Return fallback response even on error
     return NextResponse.json(
       {
         sessionId: 'unknown',
         sessionSummary: '',
         sessionCategory: 'other',
+        formattedNotes: '',
+        noteStyle: 'general',
         entities: [],
         suggestedNotebookTitle: null,
         suggestions: [],

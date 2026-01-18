@@ -15,17 +15,29 @@ interface Entity {
 interface AnalyzeResponse {
   rawText: string;
   summary: string;
+  userIntent: string;  // NEW
   category: string;
   entities: Entity[];
   suggestedNotebookTitle: string | null;
+  contextClues: {      // NEW
+    isComparison: boolean;
+    decisionPoint: string | null;
+    relatedTopics: string[];
+  };
 }
 
 const FALLBACK_RESPONSE: AnalyzeResponse = {
   rawText: '',
   summary: '',
+  userIntent: '',      // NEW
   category: 'other',
   entities: [],
   suggestedNotebookTitle: null,
+  contextClues: {      // NEW
+    isComparison: false,
+    decisionPoint: null,
+    relatedTopics: []
+  }
 };
 
 async function analyzeScreenshot(imageData: string): Promise<AnalyzeResponse> {
@@ -44,102 +56,67 @@ async function analyzeScreenshot(imageData: string): Promise<AnalyzeResponse> {
       ? imageData.split(',')[1] 
       : imageData;
 
-    const prompt = `You are an intelligent screenshot analyzer for a notebook app. Analyze this screenshot and extract structured information.
+    const prompt = `You are an AI assistant helping someone take notes while browsing the web.
 
-YOUR TASK:
-1. Perform OCR to extract ALL visible text
-2. Write a 1-3 sentence summary of what the user is viewing or deciding on
-3. Categorize the screenshot into ONE category
-4. Extract important entities (items, products, hotels, jobs, articles, etc.)
-5. Suggest a notebook title if the context is clear
+ANALYZE THIS SCREENSHOT TO EXTRACT STRUCTURED INFORMATION:
 
-STRICT OUTPUT FORMAT (JSON ONLY):
+1. Extract all visible text (OCR)
+2. Understand what the user might be trying to accomplish/take away with this screenshot
+3. Extract structured data for search/filtering
+4. Provide context about this screenshot's role in their research
+
+RETURN THIS JSON FORMAT:
 {
-  "rawText": "full OCR text extracted from screenshot",
-  "summary": "1-3 sentence description of what this screenshot shows",
-  "category": "trip-planning" | "shopping" | "job-search" | "research" | "content-writing" | "productivity" | "other",
+  "rawText": "full OCR text",
+  "summary": "What is this screenshot and why did the user capture it? (1-3 sentences)",
+  "userIntent": "What is the user trying to figure out, decide, or understand?",
+  "category": "trip-planning|shopping|job-search|research|content-writing|productivity|projects|general-planning|brainstorming|study-guides|academic-research|other",
   "entities": [
     {
-      "type": "hotel" | "product" | "job" | "article" | "generic" | etc,
-      "title": "main name or title",
-      "attributes": {
-        "key1": "value1",
-        "key2": "value2"
-      }
+      "type": "hotel|product|job|article|flight|restaurant|etc",
+      "title": "name",
+      "attributes": { "key": "value" }
     }
   ],
-  "suggestedNotebookTitle": "descriptive title for a notebook containing this screenshot, or null"
+  "suggestedNotebookTitle": "title or null",
+  "contextClues": {
+    "isComparison": true/false,
+    "decisionPoint": "what they're deciding, or null",
+    "relatedTopics": ["topic1", "topic2"]
+  }
 }
 
-RULES:
+EXAMPLES OF GOOD userIntent:
+- "Comparing luxury hotels in Tokyo for February trip"
+- "Researching AI trends for TikTok video about GPT-4"
+- "Evaluating software engineering roles at big tech companies"
+- "Looking for affordable laptops with good battery life"
+- "Doing research on a specific topic for class"
+
+EXAMPLES OF GOOD contextClues:
+For hotel screenshot:
+{
+  "isComparison": true,
+  "decisionPoint": "location vs price tradeoff",
+  "relatedTopics": ["Tokyo accommodation", "budget travel", "Shibuya nightlife"]
+}
+
+For article screenshot (TikTok research, brainstorming, studying, etc.):
+{
+  "isComparison": false,
+  "decisionPoint": null,
+  "relatedTopics": ["AI trends", "GPT-4 capabilities", "prompt engineering"]
+}
+
+IMPORTANT:
+- userIntent should capture the user's GOAL, not just describe the screenshot
+- contextClues help connect this screenshot to others in the session
+- Entities are still structured (for search), but userIntent adds meaning
 - Return ONLY valid JSON, no markdown, no explanations
-- If uncertain about summary, use empty string ""
-- If no clear category, use "other"
-- If no entities found, use empty array []
-- If no clear notebook title, use null
-- For entities: extract practical attributes (price, rating, location, url, date, company, salary, author, etc.)
-- Choose the most specific entity type possible
+- If uncertain, use empty string for userIntent
+- If no clear decision point, use null
 
-EXAMPLES:
-
-Hotel listing:
-{
-  "rawText": "Hotel Deluxe\\n5 stars\\n$299/night\\nSan Francisco, CA",
-  "summary": "User is browsing hotel options in San Francisco with pricing and ratings.",
-  "category": "trip-planning",
-  "entities": [
-    {
-      "type": "hotel",
-      "title": "Hotel Deluxe",
-      "attributes": {
-        "price": "$299/night",
-        "rating": "5 stars",
-        "location": "San Francisco, CA"
-      }
-    }
-  ],
-  "suggestedNotebookTitle": "San Francisco Hotels"
-}
-
-Product page:
-{
-  "rawText": "MacBook Pro M3\\n$1999\\n16GB RAM\\n512GB SSD",
-  "summary": "User is viewing a MacBook Pro M3 laptop configuration.",
-  "category": "shopping",
-  "entities": [
-    {
-      "type": "product",
-      "title": "MacBook Pro M3",
-      "attributes": {
-        "price": "$1999",
-        "ram": "16GB",
-        "storage": "512GB SSD"
-      }
-    }
-  ],
-  "suggestedNotebookTitle": "MacBook Comparisons"
-}
-
-Job posting:
-{
-  "rawText": "Senior Software Engineer\\nGoogle\\n$180k-$250k\\nMountain View, CA",
-  "summary": "User is viewing a senior software engineering position at Google.",
-  "category": "job-search",
-  "entities": [
-    {
-      "type": "job",
-      "title": "Senior Software Engineer",
-      "attributes": {
-        "company": "Google",
-        "salary": "$180k-$250k",
-        "location": "Mountain View, CA"
-      }
-    }
-  ],
-  "suggestedNotebookTitle": "FAANG Job Search"
-}
-
-NOW ANALYZE THE PROVIDED SCREENSHOT AND RETURN ONLY THE JSON RESPONSE.`;
+NOW ANALYZE THE SCREENSHOT:`;
 
     const requestBody = {
       contents: [
@@ -157,7 +134,7 @@ NOW ANALYZE THE PROVIDED SCREENSHOT AND RETURN ONLY THE JSON RESPONSE.`;
         },
       ],
       generationConfig: {
-        temperature: 0.2,
+        temperature: 0.3,  // Slightly higher for userIntent inference
         responseMimeType: 'application/json',
       },
     };
@@ -187,22 +164,33 @@ NOW ANALYZE THE PROVIDED SCREENSHOT AND RETURN ONLY THE JSON RESPONSE.`;
       return FALLBACK_RESPONSE;
     }
 
-    let parsed: AnalyzeResponse;
+    let parsed: any;
     try {
       parsed = JSON.parse(textContent);
     } catch (e) {
       console.error('Failed to parse Gemini response as JSON:', e);
+      console.error('Raw response:', textContent);
       return FALLBACK_RESPONSE;
     }
 
-    // Validate and normalize response
+    // Validate and normalize response with NEW FIELDS
     const result: AnalyzeResponse = {
       rawText: parsed.rawText || '',
       summary: parsed.summary || '',
+      userIntent: parsed.userIntent || '',  // NEW
       category: parsed.category || 'other',
       entities: Array.isArray(parsed.entities) ? parsed.entities : [],
       suggestedNotebookTitle: parsed.suggestedNotebookTitle || null,
+      contextClues: {  // NEW - with validation
+        isComparison: parsed.contextClues?.isComparison === true,
+        decisionPoint: parsed.contextClues?.decisionPoint || null,
+        relatedTopics: Array.isArray(parsed.contextClues?.relatedTopics) 
+          ? parsed.contextClues.relatedTopics 
+          : []
+      }
     };
+app/api/analyze/route.ts
+    console.log('Analysis complete with userIntent:', result.userIntent);
 
     return result;
   } catch (error) {
@@ -234,7 +222,12 @@ export async function POST(request: NextRequest) {
 
     console.log('Calling analyzeScreenshot...');
     const result = await analyzeScreenshot(body.image);
-    console.log('Result:', JSON.stringify(result, null, 2));
+    console.log('Result summary:', {
+      hasUserIntent: !!result.userIntent,
+      category: result.category,
+      entityCount: result.entities.length,
+      isComparison: result.contextClues.isComparison
+    });
 
     return NextResponse.json(result, { 
       status: 200,
