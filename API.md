@@ -14,11 +14,15 @@ Creates a condensed, intelligent summary from session entities with AI-powered i
 
 Regenerates session-level analysis from multiple screenshot analyses.
 
-### 4. GET /api/sessions
+### 4. POST /api/chat
+
+AI-powered chat for editing markdown notes or answering questions about session content.
+
+### 5. GET /api/sessions
 
 Lists all sessions for a user.
 
-### 5. GET /api/sessions/[id]
+### 6. GET /api/sessions/[id]
 
 Retrieves detailed information for a specific session.
 
@@ -484,3 +488,213 @@ node test-summarize.mjs
 ### CORS
 
 Cross-origin requests are allowed (same as /api/analyze)
+
+---
+
+## POST /api/chat
+
+AI-powered chat endpoint that can both edit markdown notes and answer questions about session content.
+
+### Purpose
+
+Provides an intelligent chat interface that:
+- **Edits notes** based on user commands ("remove the third item", "add a budget section")
+- **Answers questions** about note content and session context
+- **Uses session context** including screenshots, summaries, and session metadata
+- **Preserves markdown structure** when making edits
+
+### Request
+
+#### Headers
+```
+Content-Type: application/json
+```
+
+#### Body
+```json
+{
+  "sessionId": "string",
+  "userMessage": "string",
+  "currentNote": "string",
+  "context": {
+    "screenshots": [
+      {
+        "id": "string",
+        "rawText": "string",
+        "summary": "string"
+      }
+    ],
+    "sessionName": "string",
+    "sessionCategory": "string"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sessionId` | string | Yes | Unique session identifier |
+| `userMessage` | string | Yes | User's chat message/command |
+| `currentNote` | string | Yes | Current markdown note content |
+| `context` | object | No | Additional context for AI |
+| `context.screenshots` | array | No | Screenshot OCR text and summaries |
+| `context.sessionName` | string | No | Name of the session |
+| `context.sessionCategory` | string | No | Category (travel, shopping, etc.) |
+
+### Response
+
+#### Success Response (200 OK)
+
+```json
+{
+  "reply": "string",
+  "updatedNote": "string",
+  "noteWasModified": boolean
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `reply` | string | AI's response message to the user |
+| `updatedNote` | string | Modified note (if edit) or unchanged (if question) |
+| `noteWasModified` | boolean | Whether the note was edited |
+
+### Examples
+
+#### Example 1: Edit Command - Remove Item
+
+**Request:**
+```bash
+curl -X POST http://localhost:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "session-123",
+    "userMessage": "Remove the Cross Hotel Osaka from my list",
+    "currentNote": "# Japan Trip\n\n## Hotels\n- Grand Hyatt Tokyo: $350/night\n- Cross Hotel Osaka: $180/night",
+    "context": {
+      "sessionName": "Japan Trip Planning",
+      "sessionCategory": "travel"
+    }
+  }'
+```
+
+**Response:**
+```json
+{
+  "reply": "Done! I've removed the Cross Hotel Osaka.",
+  "updatedNote": "# Japan Trip\n\n## Hotels\n- Grand Hyatt Tokyo: $350/night",
+  "noteWasModified": true
+}
+```
+
+#### Example 2: Question
+
+**Request:**
+```bash
+curl -X POST http://localhost:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "session-123",
+    "userMessage": "What'\''s my total budget for this trip?",
+    "currentNote": "# Japan Trip\n\n## Budget\n- Total: $8,000 for 2 people\n- Flights: $2,000\n- Hotels: $4,500",
+    "context": {
+      "sessionName": "Japan Trip Planning"
+    }
+  }'
+```
+
+**Response:**
+```json
+{
+  "reply": "Your total estimated budget for the trip is $8,000 for 2 people.",
+  "updatedNote": "# Japan Trip\n\n## Budget\n- Total: $8,000 for 2 people\n- Flights: $2,000\n- Hotels: $4,500",
+  "noteWasModified": false
+}
+```
+
+#### Example 3: Edit Command - Add Section
+
+**Request:**
+```bash
+curl -X POST http://localhost:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "session-123",
+    "userMessage": "Add a Transportation section with JR Pass info",
+    "currentNote": "# Japan Trip\n\n## Hotels\n- Grand Hyatt Tokyo: $350/night",
+    "context": {
+      "sessionName": "Japan Trip Planning"
+    }
+  }'
+```
+
+**Response:**
+```json
+{
+  "reply": "Done! I've added a 'Transportation' section with info about JR Pass.",
+  "updatedNote": "# Japan Trip\n\n## Hotels\n- Grand Hyatt Tokyo: $350/night\n\n## Transportation\n- JR Pass: 7-day pass for unlimited train travel",
+  "noteWasModified": true
+}
+```
+
+### Command Types
+
+**Edit Commands** (modifies note):
+- "Remove the third recommendation"
+- "Rewrite the summary to be shorter"
+- "Add a section about budget"
+- "Change the title to 'My Japan Adventure'"
+- "Delete the second hotel"
+- "Make this more concise"
+
+**Questions** (no modification):
+- "What hotels did I look at?"
+- "Summarize what's in my notes"
+- "What was the price of the second hotel?"
+- "How many recommendations do I have?"
+- "What amenities does the hotel have?" (uses screenshot context)
+
+### Error Responses
+
+#### 400 Bad Request - Missing Required Fields
+```json
+{
+  "error": "Invalid request",
+  "message": "userMessage is required and must be a string"
+}
+```
+
+#### 500 Internal Server Error - Missing API Key
+```json
+{
+  "error": "Missing GEMINI_API_KEY"
+}
+```
+
+#### Fallback Response - AI Processing Error
+```json
+{
+  "reply": "Sorry, I couldn't process that request, but your note is unchanged.",
+  "updatedNote": "<original note content>",
+  "noteWasModified": false
+}
+```
+
+### Features
+
+- **Context-Aware**: Uses screenshot OCR text and summaries to provide better answers
+- **Smart Detection**: Automatically determines if message is an edit command or question
+- **Markdown Preservation**: Maintains formatting, headings, and structure when editing
+- **Graceful Fallback**: Always returns valid response, even if AI fails
+- **Full Note Updates**: Returns complete modified note, not just changes
+
+### Test Script
+
+Run locally:
+```bash
+node test-chat.mjs
+```
+
+### CORS
+
+Cross-origin requests are allowed (same as /api/analyze)
+
