@@ -254,11 +254,186 @@ async function testQuestionWithContext() {
 }
 
 /**
- * Test 5: Invalid request - Missing fields
+ * Test 5: Update note with new screenshot context
+ */
+async function testUpdateWithNewScreenshot() {
+  console.log('\n' + '='.repeat(60));
+  console.log('TEST 5: Update Note with New Screenshot Analysis');
+  console.log('='.repeat(60));
+
+  // Existing note with previous research
+  const existingNote = `# Japan Trip Planning
+
+## Summary
+Planning a 2-week trip to Japan in spring 2026. Currently researching hotels in Tokyo and Kyoto.
+
+## Hotels Found So Far
+- **Grand Hyatt Tokyo**: $350/night, 4.8★, Roppongi district
+- **The Ritz-Carlton Kyoto**: $500/night, 4.9★, along Kamogawa River
+
+## Next Steps
+- Find hotel in Osaka
+- Research transportation options
+`;
+
+  // New screenshot context from latest image analysis
+  const newScreenshotContext = {
+    screenshots: [
+      {
+        id: "screenshot-new-1",
+        rawText: "Swissôtel Nankai Osaka\n5-star hotel\n¥35,000 per night ($230)\nDirectly connected to Namba Station\nMichelin Guide recommended\nRooftop bar, Spa, Business center",
+        summary: "Luxury hotel in Osaka with excellent location and Michelin recommendation"
+      },
+      {
+        id: "screenshot-new-2", 
+        rawText: "JR Pass - 7 Day Pass\n¥29,650 per person\nUnlimited travel on JR trains\nIncludes Shinkansen (bullet train)\nMust be purchased before arriving in Japan",
+        summary: "JR Pass information for transportation between cities"
+      }
+    ],
+    sessionName: "Japan Trip Planning",
+    sessionCategory: "travel"
+  };
+
+  const request = {
+    sessionId: "test-session-123",
+    userMessage: "Add the Swissôtel Nankai Osaka to my hotels list and create a Transportation section with the JR Pass info",
+    currentNote: existingNote,
+    context: newScreenshotContext
+  };
+
+  console.log('📤 User Message:', request.userMessage);
+  console.log('📸 New Screenshot Context: Osaka hotel and JR Pass info');
+  console.log('⏳ Calling API...\n');
+
+  try {
+    const response = await fetch(`${BASE_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ Error: ${response.status} ${response.statusText}`);
+      const text = await response.text();
+      console.error('Response:', text);
+      return;
+    }
+
+    const result = await response.json();
+    
+    console.log('✅ Response received!');
+    console.log('\n📝 Reply:', result.reply);
+    console.log('\n🔧 Note Modified:', result.noteWasModified);
+    
+    if (result.noteWasModified && result.updatedNote) {
+      console.log('\n📄 Updated Note:');
+      console.log(result.updatedNote);
+      
+      // Validation
+      const hasOsakaHotel = result.updatedNote.includes('Swissôtel Nankai Osaka');
+      const hasTransportation = result.updatedNote.includes('Transportation') || result.updatedNote.includes('JR Pass');
+      
+      console.log('\n✅ Validation:');
+      console.log('  - Osaka hotel added:', hasOsakaHotel ? '✓' : '✗');
+      console.log('  - Transportation section added:', hasTransportation ? '✓' : '✗');
+    }
+
+  } catch (error) {
+    console.error('❌ Test failed:', error.message);
+  }
+}
+
+/**
+ * Test 6: Refine existing summary with new context
+ */
+async function testRefineWithContext() {
+  console.log('\n' + '='.repeat(60));
+  console.log('TEST 6: Refine Existing Summary with New Context');
+  console.log('='.repeat(60));
+
+  const existingNote = `# Japan Trip Planning
+
+## Summary
+Looking at hotels in major cities.
+
+## Hotels
+- Grand Hyatt Tokyo: $350/night
+- Ritz-Carlton Kyoto: $500/night
+- Swissôtel Osaka: $230/night
+`;
+
+  const enrichedContext = {
+    screenshots: [
+      {
+        id: "screenshot-budget",
+        rawText: "Flight prices:\nTokyo (LAX-HND): $1,200/person\nOsaka (LAX-KIX): $950/person\n\nHotel total estimate:\n14 nights x $350 avg = $4,900",
+        summary: "Flight and accommodation cost analysis"
+      }
+    ],
+    sessionName: "Japan Trip Planning",
+    sessionCategory: "travel"
+  };
+
+  const request = {
+    sessionId: "test-session-123",
+    userMessage: "Expand the summary to include flight and budget details from the screenshot",
+    currentNote: existingNote,
+    context: enrichedContext
+  };
+
+  console.log('📤 User Message:', request.userMessage);
+  console.log('📸 Context: Flight pricing and budget analysis');
+  console.log('⏳ Calling API...\n');
+
+  try {
+    const response = await fetch(`${BASE_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ Error: ${response.status} ${response.statusText}`);
+      const text = await response.text();
+      console.error('Response:', text);
+      return;
+    }
+
+    const result = await response.json();
+    
+    console.log('✅ Response received!');
+    console.log('\n📝 Reply:', result.reply);
+    console.log('\n🔧 Note Modified:', result.noteWasModified);
+    
+    if (result.noteWasModified && result.updatedNote) {
+      console.log('\n📄 Updated Summary Section:');
+      const lines = result.updatedNote.split('\n');
+      const summaryStart = lines.findIndex(l => l.includes('## Summary'));
+      if (summaryStart !== -1) {
+        // Show summary and next few lines
+        console.log(lines.slice(summaryStart, summaryStart + 5).join('\n'));
+      }
+      
+      // Validation
+      const mentionsFlights = /flight|tokyo|osaka|lax/i.test(result.updatedNote);
+      const mentionsBudget = /budget|cost|price/i.test(result.updatedNote);
+      
+      console.log('\n✅ Validation:');
+      console.log('  - Flight info incorporated:', mentionsFlights ? '✓' : '✗');
+      console.log('  - Budget info incorporated:', mentionsBudget ? '✓' : '✗');
+    }
+
+  } catch (error) {
+    console.error('❌ Test failed:', error.message);
+  }
+}
+
+/**
+ * Test 7: Invalid request - Missing fields
  */
 async function testInvalidRequest() {
   console.log('\n' + '='.repeat(60));
-  console.log('TEST 5: Invalid Request - Missing Required Fields');
+  console.log('TEST 7: Invalid Request - Missing Required Fields');
   console.log('='.repeat(60));
 
   const request = {
@@ -300,6 +475,8 @@ await testEditRemove();
 await testQuestion();
 await testEditAdd();
 await testQuestionWithContext();
+await testUpdateWithNewScreenshot();
+await testRefineWithContext();
 await testInvalidRequest();
 
 console.log('\n' + '='.repeat(60));
